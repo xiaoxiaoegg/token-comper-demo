@@ -1,0 +1,42 @@
+{
+  "language": "en",
+  "category": "structural",
+  "rules": [
+    {
+      "name": "en_struct_make_sure",
+      "pattern": "\\b(?:make sure to|be sure to)\\b\\s*",
+      "replacement": "ensure ",
+      "context": "all",
+      "category": "structural",
+      "minIntensity": "full",
+      "description": "make sure to→ensure"
+    },
+    {
+      "name": "en_struct_because",
+      "pattern": "\\b(?:due to the fact that|the reason is because)\\b\\s*",
+      "replacement": "because ",
+      "context": "all",
+      "category": "structural",
+      "minIntensity": "full",
+      "description": "due to→because"
+    },
+    {
+      "name": "en_struct_in_order_to",
+      "pattern": "\\b(?:in order to|so as to)\\b\\s*",
+      "replacement": "to ",
+      "context": "all",
+      "category": "structural",
+      "minIntensity": "lite",
+      "description": "in order to→to"
+    },
+    {
+      "name": "en_struct_connectors",
+      "pattern": "\\b(?:furthermore|additionally|moreover|in addition)\\b\\s*",
+      "replacement": "also ",
+      "context": "all",
+      "category": "structural",
+      "minIntensity": "lite",
+      "description": "furthermore→also"
+    }
+  ]
+}

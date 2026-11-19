@@ -1,0 +1,33 @@
+{
+  "language": "zh",
+  "category": "structural",
+  "rules": [
+    {
+      "name": "zh_struct_in_order_to",
+      "pattern": "为了(?:能够)?",
+      "replacement": "为",
+      "context": "all",
+      "category": "structural",
+      "minIntensity": "full",
+      "description": "为了能够→为"
+    },
+    {
+      "name": "zh_struct_make_sure",
+      "pattern": "请?确保|务必|一定要",
+      "replacement": "须",
+      "context": "all",
+      "category": "structural",
+      "minIntensity": "full",
+      "description": "务必→须"
+    },
+    {
+      "name": "zh_struct_because",
+      "pattern": "因为(?:这个|那个)?原因(?:是)?",
+      "replacement": "因",
+      "context": "all",
+      "category": "structural",
+      "minIntensity": "full",
+      "description": "因为→因"
+    }
+  ]
+}

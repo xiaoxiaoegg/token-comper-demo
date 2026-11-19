@@ -1,0 +1,42 @@
+{
+  "language": "en",
+  "category": "filler",
+  "rules": [
+    {
+      "name": "en_filler_please",
+      "pattern": "\\bplease\\b\\s*",
+      "replacement": "",
+      "context": "all",
+      "category": "filler",
+      "minIntensity": "lite",
+      "description": "删 please"
+    },
+    {
+      "name": "en_filler_thanks",
+      "pattern": "\\b(?:thank you|thanks|thank you very much)\\b[\\.,!]?\\s*",
+      "replacement": "",
+      "context": "all",
+      "category": "filler",
+      "minIntensity": "lite",
+      "description": "删道谢"
+    },
+    {
+      "name": "en_filler_hedge",
+      "pattern": "\\b(?:i think|i believe|i feel|actually|basically|honestly|in my opinion)\\b\\s*",
+      "replacement": "",
+      "context": "all",
+      "category": "filler",
+      "minIntensity": "full",
+      "description": "删犹豫词"
+    },
+    {
+      "name": "en_filler_just",
+      "pattern": "\\b(?:just|really|simply|very)\\b\\s*",
+      "replacement": "",
+      "context": "all",
+      "category": "filler",
+      "minIntensity": "full",
+      "description": "删强调词"
+    }
+  ]
+}

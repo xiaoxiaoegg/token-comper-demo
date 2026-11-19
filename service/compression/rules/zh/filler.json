@@ -1,0 +1,49 @@
+{
+  "language": "zh",
+  "category": "filler",
+  "rules": [
+    {
+      "name": "zh_filler_please",
+      "pattern": "请(?:你|您)?(?:帮我|帮忙)?",
+      "replacement": "",
+      "context": "all",
+      "category": "filler",
+      "minIntensity": "lite",
+      "description": "删客套'请你帮我'"
+    },
+    {
+      "name": "zh_filler_thanks",
+      "pattern": "(?:谢谢|多谢|感谢)(?:你|您|大家)?[。，！]?",
+      "replacement": "",
+      "context": "all",
+      "category": "filler",
+      "minIntensity": "lite",
+      "description": "删道谢"
+    },
+    {
+      "name": "zh_filler_greeting",
+      "pattern": "(?:你好|您好|大家好)[，,]?",
+      "replacement": "",
+      "context": "all",
+      "category": "filler",
+      "minIntensity": "lite",
+      "description": "删问候"
+    },
+    {
+      "name": "zh_filler_hedge",
+      "pattern": "(?:我觉得|我认为|我想说|其实|说实话|基本上)[，,]?",
+      "replacement": "",
+      "context": "all",
+      "category": "filler",
+      "minIntensity": "full",
+      "description": "删犹豫词"
+    },
+    {
+      "name": "zh_filler_hmm",
+      "pattern": "那个｜这个｜嗯｜啊｜呃",
+      "replacement": "",
+      "context": "all",
+      "minIntensity": "lite"
+    }
+  ]
+}

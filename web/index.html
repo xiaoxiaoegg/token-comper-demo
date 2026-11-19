@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Token 压缩网关</title>
+<style>
+  body { font-family: -apple-system, "PingFang SC", sans-serif; background:#0f1117; color:#e6e6e6; margin:0; padding:24px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .subtitle { font-size:12px; color:#8b93a7; margin-bottom:16px; }
+  .tabs { display:flex; gap:8px; margin-bottom:16px; }
+  .tab { background:#1a1d27; color:#8b93a7; border:1px solid #2a2e3d; padding:8px 18px; border-radius:8px; cursor:pointer; font-size:13px; }
+  .tab.active { background:#3b82f6; color:#fff; border-color:#3b82f6; }
+  .panel { background:#1a1d27; border-radius:10px; padding:16px; margin-bottom:16px; }
+  .label { font-size:12px; color:#8b93a7; margin-bottom:6px; }
+  textarea { width:100%; min-height:110px; background:#232736; color:#e6e6e6; border:1px solid #333; border-radius:6px; padding:10px; font-family:monospace; font-size:13px; box-sizing:border-box; }
+  input[type=text], select { background:#232736; color:#e6e6e6; border:1px solid #333; border-radius:6px; padding:8px; font-size:13px; }
+  button { background:#3b82f6; color:#fff; border:none; padding:10px 20px; border-radius:6px; font-size:14px; cursor:pointer; margin-top:10px; }
+  button:hover { background:#2563eb; }
+  .row { display:flex; gap:16px; }
+  .col { flex:1; }
+  .result { background:#232736; border-radius:6px; padding:12px; font-family:monospace; font-size:12px; white-space:pre-wrap; min-height:80px; }
+  .stats { margin-top:16px; }
+  .stat { display:inline-block; background:#1f2937; border-radius:8px; padding:8px 14px; margin-right:8px; font-size:13px; }
+  .stat b { color:#22c55e; }
+  .steps { margin-top:10px; font-size:12px; color:#8b93a7; white-space:pre-wrap; }
+  .hidden { display:none; }
+  .admin-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .admin-row label { font-size:13px; min-width:120px; }
+  .tag { display:inline-block; background:#232736; border-radius:6px; padding:4px 10px; margin:3px; font-size:12px; cursor:pointer; border:1px solid #333; }
+  .tag.on { background:#1f6feb; border-color:#1f6feb; }
+  .upstream-box { background:#12261a; border:1px solid #1f6f4a; border-radius:8px; padding:10px 14px; margin-top:12px; font-size:12px; color:#6ee7b7; }
+  button:disabled { background:#334155; cursor:not-allowed; opacity:.7; }
+  .spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; vertical-align:-2px; margin-right:6px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .diff-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .stat.total { background:#1f6feb; }
+  .stat.total b { color:#fff; font-size:18px; }
+  .stat.error { background:#3b1d1d; }
+  .stat.error b { color:#fca5a5; }
+  .err-box { background:#2a1215; border:1px solid #7f1d1d; border-radius:8px; padding:10px 14px; margin-top:12px; font-size:12px; color:#fca5a5; }
+  .hint { font-size:11px; color:#6b7280; margin-top:6px; }
+  .section-title { font-size:13px; color:#cbd5e1; font-weight:600; margin:0 0 8px; }
+  @media (max-width:760px){ .diff-grid,.row { grid-template-columns:1fr; flex-direction:column; } }
+</style>
+</head>
+<body>
+  <h1>🪨 Token 压缩网关</h1>
+  <div class="subtitle">插件化压缩 · 14 原子 + 3 复合预设 · 真实调用上游 · 用户/管理员分离</div>
+
+  <div class="tabs">
+    <div class="tab active" id="tab-user" onclick="switchTab('user')">👤 用户</div>
+    <div class="tab" id="tab-test" onclick="switchTab('test')">🧪 单组件测试</div>
+    <div class="tab" id="tab-studio" onclick="switchTab('studio')">🎬 Studio</div>
+    <div class="tab" id="tab-admin" onclick="switchTab('admin')">🛡️ 管理员</div>
+    <div class="tab" id="tab-exc" onclick="switchTab('exc')">🚫 排除规则</div>
+  </div>
+
+  <!-- ============ 用户面板 ============ -->
+  <div id="panel-user">
+    <div class="panel">
+      <div class="label">请求体（OpenAI 格式，压缩策略绑定在 API Key 上）</div>
+      <textarea id="input">{"model":"doubao-seed-code","tools":[{"type":"function","function":{"name":"read_file","description":"读取文件"}},{"type":"function","function":{"name":"web_search","description":"搜索网页"}},{"type":"function","function":{"name":"weather","description":"查询天气"}}],"messages":[{"role":"system","content":"你好，请你帮我分析数据，谢谢"},{"role":"user","content":"查一下这些用户数据"},{"role":"assistant","content":"我来查询","tool_calls":[{"id":"call_1","type":"function","function":{"name":"read_file","arguments":"{\"path\":\"users.json\"}"}}]},{"role":"tool","tool_call_id":"call_1","content":"[{\"name\":\"Alice\",\"age\":30,\"city\":\"北京\"},{\"name\":\"Bob\",\"age\":25,\"city\":\"上海\"}]"}]}</textarea>
+      <br>
+      <button id="run-btn" onclick="run()">🚀 压缩并调用模型</button>
+      <div class="hint">提示：可在「管理员」面板切换默认插件或开启有损压缩；也可直接使用「复合预设」lite / aggressive / ultra。</div>
+    </div>
+
+    <div class="stats" id="stats"></div>
+    <div class="err-box" id="err-box" style="display:none"></div>
+
+    <div class="diff-grid" style="margin-top:12px">
+      <div>
+        <div class="label">原始 messages（压缩前）</div>
+        <div class="result" id="orig-msgs">（点击上方按钮）</div>
+      </div>
+      <div>
+        <div class="label">压缩后 messages（发给上游）</div>
+        <div class="result" id="messages"></div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px">
+      <div class="label">执行步骤</div>
+      <div class="result steps" id="steps"></div>
+    </div>
+
+    <div class="upstream-box" id="upstream" style="display:none"></div>
+
+    <div class="panel" style="margin-top:16px">
+      <div class="label">压缩引擎一览（管理员面板可开关）</div>
+      <div style="font-size:12px;color:#8b93a7;line-height:2">
+        <span class="tag">normalize</span> 无损格式清理（合并空行/空格/重复标点）
+        <span class="tag">caveman</span> 系统提示词精简（删客套/冗余）<br>
+        <span class="tag">rtk</span> 命令感知工具结果压缩（build/test/git）
+        <span class="tag">gcf</span> 同质 JSON 数组转列式（无损）<br>
+        <span class="tag">ccr</span> 历史长内容归档占位、按需取回
+        <span class="tag">relevance</span> 按最后查询过滤历史不相关句<br>
+        <span class="tag">tool-prune</span> 按角色裁剪工具定义
+        <span class="tag">multimodal</span> 图片 detail 降级（省 80%+）<br>
+        <span class="tag">llmlingua</span> 有损语义压缩（删低信息词，需护栏）
+        <span class="tag">omniglyph</span> 长文本转图片（换载体）<br>
+        <span class="tag">session</span> 会话去重
+        <span class="tag">prefix</span> 前缀对齐三区（冻结/封存/热区）
+      </div>
+      <div style="font-size:12px;color:#8b93a7;line-height:2;margin-top:10px">
+        <b style="color:#cbd5e1">复合预设</b>（自动展开为下方原子引擎组合）：
+        <span class="tag">lite</span> 空白清理+系统提示精简+工具定义裁剪+列式（无损）
+        <span class="tag">aggressive</span> +摘要+老化+相关性+归档（含全部有损）
+        <span class="tag">ultra</span> aggressive + 语义剪枝 + 文本转图（最强）
+      </div>
+      <div style="font-size:12px;color:#8b93a7;line-height:2;margin-top:6px">
+        <b style="color:#cbd5e1">历史压缩</b>：
+        <span class="tag">summarize</span> 抽取式摘要（保首末句+相关句）
+        <span class="tag">age</span> 渐进老化（丢中段陈旧内容）
+      </div>
+      <div style="font-size:11px;color:#6b7280;margin-top:8px">提示：有损引擎（rtk/ccr/relevance/llmlingua/summarize/age 及含它们的复合预设）需在管理员面板开启「允许有损压缩」后才会生效。</div>
+    </div>
+  </div>
+
+  <!-- ============ 单组件测试面板 ============ -->
+  <div id="panel-test" class="hidden">
+    <div class="panel">
+      <div class="label">选一个压缩引擎，单独测试它的效果（不跑整个流水线）</div>
+      <div class="admin-row">
+        <label>引擎</label>
+        <select id="test-engine" onchange="onEngineChange()" style="flex:1">
+          <option value="normalize">normalize · 无损格式清理</option>
+          <option value="caveman">caveman · 系统 prompt 精简</option>
+          <option value="rtk">rtk · 工具结果压缩（有损）</option>
+          <option value="gcf">gcf · 同质 JSON 转列式</option>
+          <option value="ccr">ccr · 历史长内容归档</option>
+          <option value="relevance">relevance · 相关性过滤（有损）</option>
+          <option value="tool-prune">tool-prune · 工具定义裁剪</option>
+          <option value="session">session · 会话去重</option>
+          <option value="multimodal">multimodal · 图片 detail 降级</option>
+          <option value="llmlingua">llmlingua · 有损语义压缩</option>
+          <option value="omniglyph">omniglyph · 长文本转图片</option>
+          <option value="summarize">summarize · 抽取式摘要（>300 字）</option>
+          <option value="age">age · 渐进老化（>400 字）</option>
+          <option value="prefix">prefix · 前缀三区分区</option>
+          <optgroup label="复合预设（自动展开为原子引擎组合）">
+            <option value="lite">lite · 无损组合</option>
+            <option value="aggressive">aggressive · 摘要+老化+有损组合</option>
+            <option value="ultra">ultra · 最强组合</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="admin-row" id="query-row" style="display:none">
+        <label>查询词</label>
+        <input type="text" id="test-query" placeholder="relevance 用：最后一条用户查询" style="flex:1">
+      </div>
+      <div class="admin-row" id="command-row" style="display:none">
+        <label>命令</label>
+        <input type="text" id="test-command" placeholder="rtk 命令感知用：如 npm run build" style="flex:1">
+      </div>
+      <div class="label" style="margin-top:10px">输入内容（各引擎格式不同，切换引擎自动填示例）</div>
+      <textarea id="test-input"></textarea>
+      <br>
+      <button id="test-btn" onclick="runEngineTest()">🧪 测试此引擎</button>
+      <div id="test-note" style="font-size:12px;color:#8b93a7;margin-top:8px"></div>
+    </div>
+
+    <div class="row">
+      <div class="col">
+        <div class="label">原始内容</div>
+        <div class="result" id="test-original">（选择引擎后点「测试此引擎」）</div>
+      </div>
+      <div class="col">
+        <div class="label">压缩后</div>
+        <div class="result" id="test-compressed"></div>
+      </div>
+    </div>
+
+    <div class="stats" id="test-stats"></div>
+  </div>
+
+  <!-- ============ 管理员面板 ============ -->
+  <div id="panel-admin" class="hidden">
+    <div class="panel">
+      <div class="label">压缩策略（管理员配置，控制有损上限 + 默认插件）</div>
+
+      <div class="admin-row">
+        <label>允许有损压缩</label>
+        <input type="checkbox" id="pol-lossy" style="width:18px;height:18px;">
+        <span style="font-size:12px;color:#8b93a7">开启后用户可启用 RTK 等有损插件（受强度上限约束）</span>
+      </div>
+
+      <div class="admin-row">
+        <label>强度上限</label>
+        <select id="pol-ceil">
+          <option value="lite">lite（最保守）</option>
+          <option value="full" selected>full（标准）</option>
+          <option value="ultra">ultra（激进）</option>
+        </select>
+        <span style="font-size:12px;color:#8b93a7">用户请求的强度不能超过此上限</span>
+      </div>
+
+      <div class="admin-row" style="align-items:flex-start">
+        <label>默认插件</label>
+        <div id="pol-plugins"></div>
+      </div>
+
+      <br>
+      <button onclick="savePolicy()">💾 保存策略</button>
+      <span id="policy-status" style="font-size:12px;color:#8b93a7;margin-left:10px"></span>
+    </div>
+
+    <div class="panel">
+      <div class="label">🔑 API Key 管理（每个 key 绑定压缩策略，用户持 key 调用）</div>
+      <div class="admin-row">
+        <label>Key 名称</label>
+        <input type="text" id="key-name" placeholder="如：数据分析" style="flex:1">
+      </div>
+      <div class="admin-row">
+        <label>压缩插件</label>
+        <input type="text" id="key-plugins" placeholder="caveman,rtk,tool-prune,prefix" style="flex:1">
+      </div>
+      <div class="admin-row">
+        <label>强度</label>
+        <select id="key-intensity">
+          <option value="lite">lite</option>
+          <option value="full" selected>full</option>
+          <option value="ultra">ultra</option>
+        </select>
+        <label style="min-width:auto;margin-left:16px">允许有损</label>
+        <input type="checkbox" id="key-lossy" style="width:16px;height:16px">
+      </div>
+      <button onclick="createKey()">➕ 生成 Key</button>
+      <div id="key-list" style="margin-top:14px"></div>
+    </div>
+  </div>
+
+  <!-- ============ Compression Studio 面板 ============ -->
+  <div id="panel-studio" class="hidden">
+    <div class="panel">
+      <div class="label">🎬 Compression Studio · 实时引擎级联（最近一次压缩的请求级联 + 累计统计，每 2 秒自动刷新）</div>
+      <div id="studio-meta" style="font-size:12px;color:#8b93a7;margin-bottom:10px"></div>
+      <div id="studio-cascade"></div>
+    </div>
+    <div class="panel">
+      <div class="label">累计用量（来自 /stats）</div>
+      <div class="stats" id="studio-aggregate"></div>
+    </div>
+  </div>
+
+  <!-- ============ 排除规则面板 ============ -->
+  <div id="panel-exc" class="hidden">
+    <div class="panel">
+      <div class="label">🚫 排除规则（Exclusions）：针对 model 名称或上游 endpoint，配置「跳过压缩」或「仅无损压缩」</div>
+      <div class="admin-row">
+        <label>类型</label>
+        <select id="exc-type" style="flex:0 0 120px">
+          <option value="model">model</option>
+          <option value="endpoint">endpoint</option>
+        </select>
+      </div>
+      <div class="admin-row">
+        <label>匹配串</label>
+        <input type="text" id="exc-pattern" placeholder="如 doubao（子串匹配，大小写不敏感）" style="flex:1">
+      </div>
+      <div class="admin-row">
+        <label>动作</label>
+        <select id="exc-action" style="flex:0 0 140px">
+          <option value="skip">skip（跳过全部压缩）</option>
+          <option value="lossless">lossless（仅无损）</option>
+        </select>
+      </div>
+      <button onclick="addExclusion()">➕ 添加规则</button>
+      <span id="exc-status" style="font-size:12px;color:#8b93a7;margin-left:10px"></span>
+    </div>
+    <div class="panel">
+      <div class="label">已配置规则</div>
+      <div id="exc-list"></div>
+    </div>
+  </div>
+
+<script>
+let allPlugins = {};
+let selectedPlugins = [];
+
+function switchTab(role) {
+  document.getElementById('tab-user').className = 'tab' + (role==='user' ? ' active' : '');
+  document.getElementById('tab-test').className = 'tab' + (role==='test' ? ' active' : '');
+  document.getElementById('tab-studio').className = 'tab' + (role==='studio' ? ' active' : '');
+  document.getElementById('tab-admin').className = 'tab' + (role==='admin' ? ' active' : '');
+  document.getElementById('tab-exc').className = 'tab' + (role==='exc' ? ' active' : '');
+  document.getElementById('panel-user').className = role==='user' ? '' : 'hidden';
+  document.getElementById('panel-test').className = role==='test' ? '' : 'hidden';
+  document.getElementById('panel-studio').className = role==='studio' ? '' : 'hidden';
+  document.getElementById('panel-admin').className = role==='admin' ? '' : 'hidden';
+  document.getElementById('panel-exc').className = role==='exc' ? '' : 'hidden';
+  if (role==='admin') { loadPolicy(); loadKeys(); }
+  if (role==='test') { onEngineChange(); }
+  if (role==='studio') { refreshStudio(); studioTimer = setInterval(refreshStudio, 2000); }
+  else if (studioTimer) { clearInterval(studioTimer); studioTimer = null; }
+  if (role==='exc') { loadExclusions(); }
+}
+let studioTimer = null;
+
+// ---- 单组件测试 ----
+const engineNotes = {
+  normalize: '输入：user 文本。清理：合并连续空行/空格、去重复标点、trim 首尾（无损）。',
+  caveman: '输入：系统提示词。清理：删客套/冗余/结构短语（多语言规则，近无损）。',
+  rtk: '输入：工具结果文本（日志/JSON/diff/grep/代码/shell）。填命令走命令感知过滤，不填按内容类型压。有损。',
+  gcf: '输入：JSON 数组，如 [{"a":1},{"a":2}]。同构数组才转列式（无损）。',
+  ccr: '输入：历史长文本（>2000 字符）。归档为 [ccr hash=…] 占位，可无损取回。',
+  relevance: '输入：多行历史消息 + 下方查询词。按 Jaccard 只保留相关句（有损）。',
+  'tool-prune': '输入：tools JSON 数组。按 agent 角色 allow-list 裁剪（无损）。',
+  session: '输入：多行内容，每行一条消息。重复内容用 [dup of #N] 替代。',
+  multimodal: '输入：多模态数组 JSON（含 image_url）。detail high→low 降级（省 80%+）。',
+  llmlingua: '输入：任意长文本。删低信息词（停用词/语气词），保留数字/专名/关键词，保头尾。有损，需护栏。',
+  omniglyph: '输入：长文本（>200 字符）。渲染成 PNG 图片换载体省 token。需视觉模型消费。',
+  summarize: '输入：长文本（>300 字符）。抽取式摘要：保首末句 + 与查询相关句（本地启发式）。有损。',
+  age: '输入：长文本（>400 字符）。渐进老化：丢中段陈旧内容、保头尾。有损。',
+  prefix: '输入：messages JSON 数组。输出冻结/封存/热区三区统计。',
+  lite: '复合预设：自动展开为 normalize+caveman+tool-prune+gcf（无损）链式压缩。',
+  aggressive: '复合预设：lite + rtk+relevance+session+ccr+summarize+age+llmlingua（含全部有损，需开「允许有损」）。填查询词可让 summarize 命中相关句。',
+  ultra: '复合预设：aggressive + omniglyph（最强，需开「允许有损」）。'
+};
+const engineDefaults = {
+  normalize: '你是什么模型\n\n\n\n这些多余的   空格你可以，，，，帮忙删除掉吗',
+  caveman: '你好，请你帮我分析数据，谢谢。make sure to check the docs in order to proceed.',
+  rtk: 'vite v5.0.0 building for production...\ntransforming index.html\n✓ 10 modules transformed.\ndist/assets/index.js 12.3 kB\nERROR: chunk failed\n✓ built in 100ms',
+  gcf: '[{"name":"Alice","age":30,"city":"北京"},{"name":"Bob","age":25,"city":"上海"}]',
+  ccr: '这是历史区的一条超长内容，需要超过两千个字符才会被归档成 [ccr hash=…] 占位符……' + '很长很长。'.repeat(120),
+  relevance: '今天天气很好，阳光明媚。\n数据库连接超时了。\n需要重试连接。\n下午去公园散步。',
+  'tool-prune': '[{"type":"function","function":{"name":"read_file","description":"读取文件"}},{"type":"function","function":{"name":"web_search","description":"搜索网页"}},{"type":"function","function":{"name":"weather","description":"查询天气"}},{"type":"function","function":{"name":"send_email","description":"发送邮件"}}]',
+  session: '第一段日志内容\n第一段日志内容\n正常输出内容',
+  multimodal: '[{"type":"text","text":"分析这张图"},{"type":"image_url","image_url":{"url":"https://example.com/a.png","detail":"auto"}}]',
+  llmlingua: '这是一个很重要的数据库系统的测试内容，包含了 the very important test case for the system，版本号是 1.2.3，总共 42 个条目。',
+  omniglyph: '这是一段用于演示文本转图片的长内容。'.repeat(12),
+  summarize: '第0条历史记录：系统初始化完成，加载了配置文件和用户数据。在0次迭代中我们发现了性能瓶颈，主要集中在数据库连接池和缓存命中率上。经过分析，建议优化查询语句并增加索引覆盖。第1条历史记录：发现页面加载缓慢，前端打包体积过大。第2条历史记录：用户反馈搜索结果不准确，需要优化分词。第3条历史记录：数据库连接超时问题通过连接池复用解决。第4条历史记录：性能测试显示吞吐量提升了百分之二十，达到预期目标。',
+  age: '这是第0轮对话中产生的历史内容，包含大量中间过程的讨论。这是第1轮对话中产生的历史内容，包含调试日志。这是第2轮对话中产生的历史内容，包含临时结论。这是第3轮对话中产生的历史内容，参考价值下降。这是第4轮对话中产生的历史内容，逐渐陈旧。这是第5轮对话中产生的历史内容，对当前任务帮助有限。这是第12轮对话中产生的历史内容，仍然相关。这是第13轮对话中产生的历史内容，包含最新决定。这是第14轮对话中产生的历史内容，包含下一步计划。',
+  prefix: '[{"role":"system","content":"你是助手"},{"role":"user","content":"你好"},{"role":"assistant","content":"你好"},{"role":"user","content":"今天天气如何？"}]',
+  lite: 'vite v5 building for production\nINFO step 1 done\nINFO step 2 done\nERROR chunk failed\n✓ built in 100ms',
+  aggressive: '这是一段很长的历史对话内容，记录了许多中间讨论。vite v5 building for production\nINFO step 1 completed\nERROR chunk failed at module X\n✓ built in 100ms\n数据库性能测试显示吞吐量显著提升，连接池优化生效。这是第12轮对话的最新结论，确定下周上线。',
+  ultra: '这是一段很长的历史对话内容，记录了许多中间讨论过程与调试日志。vite v5 building for production\nINFO step 1 completed\nWARNING memory usage high\nERROR chunk failed at module X\n✓ built in 100ms\n数据库性能测试显示吞吐量显著提升。用户反馈整体体验良好。这是最新的上线结论。'
+};
+
+function onEngineChange() {
+  const e = document.getElementById('test-engine').value;
+  const needQuery = (e==='relevance' || e==='summarize' || e==='aggressive' || e==='ultra');
+  document.getElementById('query-row').style.display = needQuery ? '' : 'none';
+  document.getElementById('command-row').style.display = e==='rtk' ? '' : 'none';
+  document.getElementById('test-note').textContent = engineNotes[e] || '';
+  document.getElementById('test-input').value = engineDefaults[e] || '';
+  document.getElementById('test-query').value = (e==='summarize' || e==='aggressive' || e==='ultra') ? '性能 测试 数据库 上线' : '';
+  document.getElementById('test-command').value = e==='rtk' ? 'npm run build' : '';
+  document.getElementById('test-original').textContent = '（选择引擎后点「测试此引擎」）';
+  document.getElementById('test-compressed').textContent = '';
+  document.getElementById('test-stats').innerHTML = '';
+}
+
+async function runEngineTest() {
+  const engine = document.getElementById('test-engine').value;
+  const content = document.getElementById('test-input').value;
+  const query = document.getElementById('test-query').value || '';
+  const command = document.getElementById('test-command').value || '';
+  const btn = document.getElementById('test-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>测试中…';
+  document.getElementById('test-stats').innerHTML = '';
+
+  let d;
+  try {
+    const res = await fetch('/test/engine', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({engine: engine, content: content, query: query, command: command})
+    });
+    d = await res.json();
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '🧪 测试此引擎';
+    document.getElementById('test-original').textContent = '❌ 请求失败: ' + e.message;
+    return;
+  }
+  btn.disabled = false;
+  btn.textContent = '🧪 测试此引擎';
+
+  if (d.error) {
+    document.getElementById('test-original').textContent = '❌ ' + d.error;
+    document.getElementById('test-compressed').textContent = '';
+    document.getElementById('test-stats').innerHTML = '';
+    return;
+  }
+  document.getElementById('test-original').textContent = d.original || content;
+  const compressed = d.compressed;
+  document.getElementById('test-compressed').textContent = typeof compressed === 'string' ? compressed : JSON.stringify(compressed, null, 2);
+  let stats = '<span class="stat">节省 <b>' + (d.saved||0) + '</b> token</span>';
+  stats += '<span class="stat">原始 <b>' + (d.original_len||0) + '</b> → 压缩后 <b>' + (d.compressed_len||0) + '</b></span>';
+  stats += '<span class="stat">生效 <b>' + (d.applied ? '✅ 是' : '❌ 否（输入不适用此引擎）') + '</b></span>';
+  if (d.confidence) {
+    stats += '<span class="stat">置信度 <b>' + (d.confidence*100).toFixed(0) + '%</b></span>';
+  }
+  if (d.techniques && d.techniques.length) {
+    stats += '<span class="stat">技术 <b>' + d.techniques.join(', ') + '</b></span>';
+  }
+  if (d.rules && d.rules.length) {
+    stats += '<span class="stat">规则 <b>' + d.rules.join(', ') + '</b></span>';
+  }
+  if (d.zones) {
+    stats += '<span class="stat">冻结<b>' + d.zones.frozen + '</b> 封存<b>' + d.zones.archived + '</b> 热区<b>' + d.zones.hot + '</b></span>';
+  }
+  if (d.elided && d.elided.length) {
+    stats += '<span class="stat">透明标记 <b>' + JSON.stringify(d.elided) + '</b></span>';
+  }
+  document.getElementById('test-stats').innerHTML = stats;
+}
+
+// ---- 用户：压缩 + 真实调用 ----
+function setLoading(on) {
+  const btn = document.getElementById('run-btn');
+  btn.disabled = on;
+  btn.innerHTML = on ? '<span class="spinner"></span>压缩中…' : '🚀 压缩并调用模型';
+}
+
+async function run() {
+  let raw = document.getElementById('input').value.trim();
+  let body;
+  try {
+    body = JSON.parse(raw);
+  } catch(e) {
+    if (raw.length > 0) {
+      body = { model: 'doubao-seed-code', messages: [{ role: 'user', content: raw }] };
+    } else {
+      showError('❌ 输入为空或 JSON 格式错误');
+      return;
+    }
+  }
+
+  setLoading(true);
+  document.getElementById('err-box').style.display = 'none';
+  document.getElementById('steps').textContent = '⏳ 压缩中…';
+
+  let d;
+  try {
+    const res = await fetch('/compress', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
+    });
+    d = await res.json();
+  } catch(e) {
+    setLoading(false);
+    showError('❌ 请求失败（服务未启动？）: ' + e.message);
+    return;
+  }
+  setLoading(false);
+
+  // 原始 messages（压缩前，从输入解析）
+  document.getElementById('orig-msgs').textContent = JSON.stringify(body.messages, null, 2);
+  document.getElementById('messages').textContent = JSON.stringify(d.messages, null, 2);
+  document.getElementById('steps').textContent = (d.steps||[]).join('\n');
+
+  // 统计卡：总节省突出显示
+  let stats = '<span class="stat total">总计节省 <b>' + d.total + '</b> token</span>';
+  for (const [k,v] of Object.entries(d.saved||{})) {
+    stats += '<span class="stat">' + k + ' <b>+' + v + '</b></span>';
+  }
+  if (d.zones) {
+    stats += '<span class="stat">前缀分区 冻结<b>' + (d.zones.frozen||0) + '</b> 封存<b>' + (d.zones.archived||0) + '</b> 热区<b>' + (d.zones.hot||0) + '</b></span>';
+  }
+  document.getElementById('stats').innerHTML = stats;
+
+  const up = document.getElementById('upstream');
+  if (d.upstream_error) {
+    up.style.display = 'block';
+    up.textContent = '❌ 上游调用失败: ' + d.upstream_error;
+    up.style.borderColor = '#dc2626'; up.style.color = '#fca5a5';
+  } else if (d.upstream) {
+    up.style.display = 'block';
+    up.style.borderColor = '#1f6f4a'; up.style.color = '#6ee7b7';
+    const content = d.upstream.choices && d.upstream.choices[0] ? d.upstream.choices[0].message.content : '';
+    const usage = d.upstream.usage ? ' 输入' + d.upstream.usage.prompt_tokens + ' / 输出' + d.upstream.usage.completion_tokens + ' token' : '';
+    up.innerHTML = '✅ 上游真实回答（' + (d.upstream.model||'') + '）' + usage + '<br><br>' + content;
+  }
+}
+
+function showError(msg) {
+  const box = document.getElementById('err-box');
+  box.textContent = msg;
+  box.style.display = 'block';
+}
+
+// ---- 管理员：加载策略 ----
+async function loadPolicy() {
+  const res = await fetch('/admin/policy');
+  const d = await res.json();
+  document.getElementById('pol-lossy').checked = !!d.max_lossy;
+  document.getElementById('pol-ceil').value = d.intensity_ceil || 'full';
+  allPlugins = d.plugins || {};
+  selectedPlugins = (d.default_plugins||[]).slice();
+  renderPluginTags();
+}
+
+function renderPluginTags() {
+  const box = document.getElementById('pol-plugins');
+  box.innerHTML = '';
+  for (const [name, meta] of Object.entries(allPlugins)) {
+    const tag = document.createElement('span');
+    tag.className = 'tag' + (selectedPlugins.includes(name) ? ' on' : '');
+    tag.textContent = name + (meta.lossy ? ' ⚠️有损' : '');
+    tag.title = meta.desc;
+    tag.onclick = () => {
+      const i = selectedPlugins.indexOf(name);
+      if (i >= 0) selectedPlugins.splice(i, 1); else selectedPlugins.push(name);
+      renderPluginTags();
+    };
+    box.appendChild(tag);
+  }
+}
+
+async function savePolicy() {
+  const body = {
+    max_lossy: document.getElementById('pol-lossy').checked,
+    intensity_ceil: document.getElementById('pol-ceil').value,
+    default_plugins: selectedPlugins
+  };
+  const res = await fetch('/admin/policy', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body)
+  });
+  const d = await res.json();
+  document.getElementById('policy-status').textContent = d.ok ? '✅ 已保存' : '❌ ' + (d.error||'保存失败');
+  setTimeout(()=>document.getElementById('policy-status').textContent='', 3000);
+}
+
+// ---- Key 管理 ----
+async function createKey() {
+  const name = document.getElementById('key-name').value.trim() || 'default';
+  const plugins = document.getElementById('key-plugins').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const body = {
+    name: name,
+    compression: {
+      plugins: plugins,
+      intensity: document.getElementById('key-intensity').value,
+      lossy: document.getElementById('key-lossy').checked
+    }
+  };
+  const res = await fetch('/admin/keys', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body)
+  });
+  const d = await res.json();
+  if (d.key) {
+    alert('✅ 新 Key 生成（请复制保存）:\n\n' + d.key);
+    loadKeys();
+  } else {
+    alert('❌ ' + (d.error||'生成失败'));
+  }
+}
+
+async function loadKeys() {
+  const res = await fetch('/admin/keys');
+  const d = await res.json();
+  renderKeys(d.keys || []);
+}
+
+function renderKeys(keys) {
+  const box = document.getElementById('key-list');
+  if (!keys.length) { box.innerHTML = '<div style="font-size:12px;color:#8b93a7">（暂无 key，用上方表单生成）</div>'; return; }
+  let html = '';
+  for (const k of keys) {
+    const plugins = (k.compression.plugins||[]).join(', ') || '默认';
+    html += '<div style="background:#232736;border-radius:6px;padding:10px;margin-bottom:8px;font-size:12px">' +
+      '<b>' + k.name + '</b> <span style="color:#8b93a7">' + k.created_at + '</span><br>' +
+      '<span style="font-family:monospace;color:#6ee7b7">' + k.key + '</span><br>' +
+      '插件: ' + plugins + ' · 强度: ' + (k.compression.intensity||'默认') + (k.compression.lossy ? ' · ⚠️有损' : '') +
+      ' <button onclick="deleteKey(\'' + k.key + '\')" style="background:#dc2626;padding:4px 10px;font-size:11px;margin-left:8px">删除</button>' +
+      '</div>';
+  }
+  box.innerHTML = html;
+}
+
+async function deleteKey(key) {
+  await fetch('/admin/keys/' + encodeURIComponent(key), {method: 'DELETE'});
+  loadKeys();
+}
+
+// ---- Compression Studio：实时级联 ----
+async function refreshStudio() {
+  try {
+    const res = await fetch('/compression/studio');
+    const d = await res.json();
+    document.getElementById('studio-meta').textContent = d.last_at
+      ? '最近一次压缩级联 @ ' + d.last_at + '（共 ' + (d.last_trace||[]).length + ' 条引擎调用）'
+      : '暂无压缩记录，去「用户」面板跑一次压缩即可看到级联。';
+    const trace = d.last_trace || [];
+    let html = '';
+    if (!trace.length) {
+      html = '<div style="font-size:12px;color:#6b7280">（无级联记录）</div>';
+    } else {
+      trace.forEach((t, i) => {
+        const color = t.fired ? (t.saved_tokens>0 ? '#22c55e' : '#8b93a7') : '#475569';
+        const tag = t.fired ? (t.saved_tokens>0 ? '✅ 生效' : '○ 适用未省') : '⏭️ 跳过';
+        const tech = (t.techniques&&t.techniques.length) ? ' · '+t.techniques.join('/') : '';
+        html += '<div style="display:flex;align-items:center;gap:10px;font-size:12px;margin:4px 0;padding-left:'+(i*14)+'px">' +
+          '<span style="color:'+color+'">'+tag+'</span>' +
+          '<b style="color:#e6e6e6">'+t.engine+'</b>' +
+          '<span style="color:#8b93a7">省 '+t.saved_tokens+' token'+tech+'</span></div>';
+      });
+    }
+    document.getElementById('studio-cascade').innerHTML = html;
+
+    const agg = d.aggregate || {};
+    let a = '<span class="stat">累计节省 <b>'+(agg.total_saved||0)+'</b> token</span>';
+    a += '<span class="stat">压缩次数 <b>'+(agg.count||0)+'</b></span>';
+    for (const [k,v] of Object.entries(agg.by_engine||{})) {
+      a += '<span class="stat">'+k+' <b>+'+v+'</b></span>';
+    }
+    document.getElementById('studio-aggregate').innerHTML = a;
+  } catch(e) {
+    document.getElementById('studio-meta').textContent = '获取级联失败: ' + e.message;
+  }
+}
+
+// ---- 排除规则 ----
+async function loadExclusions() {
+  const res = await fetch('/admin/exclusions');
+  const d = await res.json();
+  renderExclusions(d.exclusions || []);
+}
+
+function renderExclusions(list) {
+  const box = document.getElementById('exc-list');
+  if (!list.length) { box.innerHTML = '<div style="font-size:12px;color:#8b93a7">（暂无排除规则）</div>'; return; }
+  let html = '';
+  for (const e of list) {
+    html += '<div style="background:#232736;border-radius:6px;padding:10px;margin-bottom:8px;font-size:12px">' +
+      '<b>'+e.type+'</b> 匹配 <span style="font-family:monospace;color:#6ee7b7">'+e.pattern+'</span> → ' +
+      '<span style="color:#f59e0b">'+e.action+'</span>' +
+      ' <button onclick="deleteExclusion(\''+e.id+'\')" style="background:#dc2626;padding:4px 10px;font-size:11px;margin-left:8px">删除</button>' +
+      '</div>';
+  }
+  box.innerHTML = html;
+}
+
+async function addExclusion() {
+  const type = document.getElementById('exc-type').value;
+  const pattern = document.getElementById('exc-pattern').value.trim();
+  const action = document.getElementById('exc-action').value;
+  if (!pattern) { document.getElementById('exc-status').textContent = '❌ 匹配串不能为空'; return; }
+  const res = await fetch('/admin/exclusions', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({type:type, pattern:pattern, action:action})
+  });
+  const d = await res.json();
+  document.getElementById('exc-status').textContent = d.ok ? '✅ 已添加' : '❌ '+(d.error||'失败');
+  setTimeout(()=>document.getElementById('exc-status').textContent='', 3000);
+  loadExclusions();
+}
+
+async function deleteExclusion(id) {
+  await fetch('/admin/exclusions/' + encodeURIComponent(id), {method: 'DELETE'});
+  loadExclusions();
+}
+</script>
+</body>
+</html>

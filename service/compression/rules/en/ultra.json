@@ -1,0 +1,105 @@
+{
+  "language": "en",
+  "category": "ultra",
+  "rules": [
+    {
+      "name": "en_ultra_articles",
+      "pattern": "\\b(?:[Aa]|[Aa]n|[Tt]he)\\s+",
+      "replacement": "",
+      "context": "system",
+      "category": "ultra",
+      "minIntensity": "ultra",
+      "description": "删冠词 a/an/the（ultra 级，仅 system）"
+    },
+    {
+      "name": "en_ultra_highly",
+      "pattern": "\\b(?:highly|very|really|extremely|carefully|thoroughly|diligently)\\s+",
+      "replacement": "",
+      "context": "system",
+      "category": "ultra",
+      "minIntensity": "ultra",
+      "description": "删强调副词"
+    },
+    {
+      "name": "en_ultra_adjectives",
+      "pattern": "\\b(?:skilled|professional|comprehensive|detailed|impactful|well-structured|actionable|data-driven|clear|specific)\\s+",
+      "replacement": "",
+      "context": "system",
+      "category": "ultra",
+      "minIntensity": "ultra",
+      "description": "删冗余形容词"
+    },
+    {
+      "name": "en_ultra_generate_to_make",
+      "pattern": "\\bgenerate\\b",
+      "replacement": "make",
+      "context": "system",
+      "category": "ultra",
+      "minIntensity": "ultra",
+      "description": "generate→make"
+    },
+    {
+      "name": "en_ultra_additional",
+      "pattern": "\\b(?:additional|extra|further)\\s+",
+      "replacement": "",
+      "context": "system",
+      "category": "ultra",
+      "minIntensity": "ultra",
+      "description": "additional→删"
+    },
+    {
+      "name": "en_ultra_without_exception",
+      "pattern": "\\b(?:without exception|without fail)\\b",
+      "replacement": "",
+      "context": "system",
+      "category": "ultra",
+      "minIntensity": "ultra",
+      "description": "without exception→删"
+    },
+    {
+      "name": "en_ultra_in_depth",
+      "pattern": "\\b(?:in-depth|in depth)\\b\\s*",
+      "replacement": "",
+      "context": "system",
+      "category": "ultra",
+      "minIntensity": "ultra",
+      "description": "in-depth→删"
+    },
+    {
+      "name": "en_ultra_ensure_removal",
+      "pattern": "\\b(?:Please ensure that|Please make sure that|Please)\\s+",
+      "replacement": "",
+      "context": "system",
+      "category": "ultra",
+      "minIntensity": "ultra",
+      "description": "删 Please/please ensure 冗余"
+    },
+    {
+      "name": "en_ultra_based_on",
+      "pattern": "\\b(?:based on the identified trends and anomalies|based on)\\b\\s*",
+      "replacement": "",
+      "context": "system",
+      "category": "ultra",
+      "minIntensity": "ultra",
+      "description": "删 based on 冗余"
+    },
+    {
+      "name": "en_ultra_which_removal",
+      "pattern": "\\b(?:which ones|which)\\s+",
+      "replacement": "",
+      "context": "system",
+      "category": "ultra",
+      "minIntensity": "ultra",
+      "description": "删 which 引导冗余"
+    },
+    {
+      "name": "en_ultra_at_least",
+      "pattern": "\\b(?:at least)\\b\\s*",
+      "replacement": "",
+      "context": "system",
+      "category": "ultra",
+      "minIntensity": "ultra",
+      "description": "at least→删"
+    }
+  ]
+}
